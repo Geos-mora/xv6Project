@@ -32,6 +32,27 @@ cpuid() {
   return mycpu()-cpus;
 }
 
+//-----------------------------CAMBIO SE AGREGA LA FUNCION----------------------------------------------------------------------------------------------
+int
+setpriority(int pid, int newprio)
+{
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->priority = newprio;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
@@ -325,20 +346,30 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+    struct proc *highp = 0;
+
+    // 1. Buscar el proceso RUNNABLE con mayor prioridad
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+      // Si no hay seleccionado o este tiene mayor prioridad
+      if(highp == 0 || p->priority > highp->priority){
+        highp = p;
+      }
+    }
+
+    // 2. Si encontramos un proceso, hacemos el cambio de contexto
+    if(highp){
+      p = highp;
+
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -346,14 +377,13 @@ scheduler(void)
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
       c->proc = 0;
     }
-    release(&ptable.lock);
 
+    release(&ptable.lock);
   }
 }
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores

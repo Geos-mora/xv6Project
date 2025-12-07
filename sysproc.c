@@ -38,7 +38,7 @@ sys_kill(void)
 
 int
 sys_getpid(void)
-{
+{//----------------------------------------------------
   return myproc()->pid;
 }
 
@@ -77,6 +77,8 @@ sys_sleep(void)
   return 0;
 }
 
+
+
 // return how many clock tick interrupts have occurred
 // since start.
 int
@@ -88,4 +90,19 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+//------------------------------------------------------SE AGREGO ESTA FUNCION ----------------------------------------------
+// Declaración para llamar al setpriority del kernel (proc.c)
+extern int setpriority(int pid, int newprio);
+
+// Implementación del syscall setpriority
+int
+sys_setpriority(void)
+{
+  int pid, prio;
+
+  if(argint(0, &pid) < 0 || argint(1, &prio) < 0)
+    return -1;
+
+  return setpriority(pid, prio);
 }
